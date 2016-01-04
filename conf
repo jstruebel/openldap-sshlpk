@@ -1,0 +1,25 @@
+#!/bin/bash -ex
+install()
+{
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get -y \
+        -o DPkg::Options::=--force-confdef \
+        -o DPkg::Options::=--force-confold \
+        install $@
+}
+
+LDAP_PASS=turnkey
+LDAP_DOMAIN=example.com
+
+# add to openldap-reinit script to include schema
+CONF=/usr/lib/inithooks/bin/openldap-reinit.sh
+
+# add schema
+sed -i "s|# add nsspam user to access rules|# add openssh public key schema\nldapadd -Q -Y EXTERNAL -H ldapi:/// -f /etc/ldap/schema/openssh-ldap.ldif\n\n# add nsspam user to access rules|" $CONF
+
+# re-initialize ldap
+/usr/lib/inithooks/bin/openldap.py --domain=$LDAP_DOMAIN --pass=$LDAP_PASS
+
+# remove backup from re-initialization
+rm -rf /var/backups/slapd-
+rm -rf /var/backups/*.ldapdb
